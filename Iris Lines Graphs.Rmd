@@ -59,6 +59,13 @@ merge_data_nocyp_nopad <- merge_data %>%
 merge_data_nocyp_nopad$Genotime <- paste(merge_data_nocyp_nopad$Genotype, merge_data_nocyp_nopad$Time, sep="_")  
 
 ```
+```{r}
+data.frame(data_nocyp_nopad)
+regression = lm(Lesion.Size ~ Isolate * Genotype + Botrydial_HL + Tray + Time, data=data_nocyp_nopad)
+summary(regression)
+anova(regression)
+```
+
 
 ```{r}
 data$Time <- as.factor(data$Time)

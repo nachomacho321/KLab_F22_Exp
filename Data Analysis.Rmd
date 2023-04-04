@@ -6,10 +6,13 @@ output: html_document
 ---
 
 ```{r}
+#install.packages("paletteer")
 library(naniar)
 library(tidyverse)
 library(dbplyr)
 library(ggplot2)
+library(RColorBrewer)
+library(paletteer)
 ```
 
 
@@ -19,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 getwd()
-data = readr::read_csv(file = "data/IrisLines_DLA_7296h.csv")
+data = readr::read_csv(file = "data/IrisLines_DLA_7296h2.csv")
 ```
 ```{r}
 data$Time <- as.factor(data$Time)
@@ -104,6 +107,28 @@ Summary_wide %>%
   data$C <- (data$col0 - data$Pad3)
 
 ```
+```{r}
+
+p <- ggplot(data, aes(x=Genotype,y=log10(Lesion.0.s.area), color=Time))+
+     geom_boxplot(outlier.color="black")+
+    theme_bw() + labs(title = "Lesion Growth Across Genotypes",
+       x = "Genotype",
+       y = "Lesion Area (Pixels)")+
+    theme(plot.title = element_text(size = rel(1.5), hjust = 0.5),axis.text.x = element_text(angle=90), legend.position = "right")+
+    scale_color_manual(values = c("#FF0000","#339900"))+
+    scale_x_discrete(labels=c("1.14.1" = "1-14-1", "1.14.23" = "1-14-23",
+                              "1.33.1" = "1-33-1", "5.10.2" = "5-10-2"))
+p
+  
+
+#http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/#hexadecimal-color-code-chart
+```
+```{r}
+pdf("urc_plot.pdf")
+print(p)
+dev.off()
+```
+
 
 
 
