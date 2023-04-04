@@ -1,0 +1,380 @@
+---
+title: "F22 Experiment"
+author: "Gurshan"
+date: '2023-01-13'
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("lme4")
+library(lme4)
+library(naniar)
+library(tidyverse)
+library(dbplyr)
+library(ggplot2)
+library(readr)
+```
+
+
+
+```{r}
+#library(ggplot2)
+#library(dbplyr)
+getwd()
+data = read.csv(file = "data/IrisLines_DLA_7296h2.csv")
+
+ 
+lineinfo = read.csv(file = "data/Iris_Crispr_Modeling.csv", header=TRUE)
+lineinfo$Genotype <- as.factor(lineinfo$Genotype)
+#levels(lineinfo$Genotype)
+
+
+#levels(as.factor(data$Genotype))
+
+#lineinfo$Genotype <- gsub("\\-", ".", lineinfo$Genotype, fixed = FALSE)
+#levels(lineinfo$Genotype)
+#lineinfo %>% 
+ # pivot_wider(names_from = "Genotype")
+  #rename("1-14-23" = "1.14.23", "1-14-1"= "1.14.1", "1-33-1" = "1.33.1", "5-10-2" = "5.10.2")
+```
+```{r}
+merge_data <- merge(data, lineinfo, by="Genotype", all.x = FALSE)
+
+levels(as.factor(merge_data$Genotype))
+levels(as.factor(lineinfo$Genotype))
+levels(as.factor(data$Genotype))
+#write.csv(merge_data, "data/merge_data.csv")
+```
+```{r}
+data_nocyp_nopad <- data %>% 
+  filter(Genotype!="pad3", Genotype!="Cyp79B2/B3") 
+  levels(as.factor(data_nocyp_nopad$Genotype))
+merge_data_nocyp_nopad <- merge_data %>% 
+  filter(Genotype!="pad3", Genotype!="Cyp79B2/B3") 
+  levels(as.factor(merge_data_nocyp_nopad$Genotype))
+  
+merge_data_nocyp_nopad$Genotime <- paste(merge_data_nocyp_nopad$Genotype, merge_data_nocyp_nopad$Time, sep="_")  
+
+```
+
+```{r}
+data$Time <- as.factor(data$Time)
+
+
+ggplot(data, aes(x=Isolate,y=Area.mm, color=Time))+
+geom_boxplot()
+
+```
+```{r}
+Split <- split.data.frame(data, data$Time)
+names(Split) <- c("H72", "H96")
+```
+
+```{r}
+list2env(Split, globalenv())
+```
+```{r}
+H72 %>% 
+  ggplot(
+    aes(x=Area.mm))+
+  geom_density()
+H96 %>% 
+  ggplot(
+    aes(x=Area.mm))+
+  geom_density()
+```
+```{r}
+data_summary <- data %>% 
+  select(Isolate,Genotype, Tray, Time, Area.mm) %>% 
+  arrange(Isolate, Tray)
+```
+
+```{r}
+#colnames(data)
+```
+```{r}
+levels(merge_data$Isolate)
+```
+
+
+```{r}
+
+merge_data[,158] <- as.factor(merge_data[,158])
+
+
+data.frame(merge_data_nocyp_nopad)
+#regression = lm(Leaf.Size ~ Genotype, data=merge_data)
+regression= lm(Leaf.Size ~ Leaf.Grn, data=data)
+#regression = lm(Area.mm ~ Tray + Time + Isolate*AT1G22410_myb + Isolate*AT1G22410_evening + Isolate*AT4G33510, data=merge_data_nocyp_nopad)
+#regression = lm(Area.mm ~ Time + Isolate*Genotype + Isolate*Genotype/AT1G22410_myb + Isolate*Genotype/AT1G22410_evening + Isolate*Genotype/AT4G39980.AT5G66120 + Isolate*Genotype/AT4G33510 + Isolate*Genotype/AT1G48860.CIS2.AT1G48850, data=merge_data_nocyp_nopad)
+summary(regression)
+anova(regression)
+```
+```{r}
+data$Time <- as.factor(data$Time)
+ggplot(data, aes(x=Lesion.0.m.eccentricity,y=Area.mm, color = Genotype))+
+geom_point()+
+  facet_grid(Isolate~Time)+
+  stat_smooth(method = "lm")
+
+```
+```{r}
+
+ggplot(data,aes(x=Lesion.0.m.eccentricity,y=Area.mm))+
+#geom_point()
+geom_line(aes(linetype=Isolate))+
+  stat_smooth(method = "lm")+
+  facet_grid(Isolate~Time)
+```
+```{r}
+data$key <- paste(data$Isolate, data$Genotype, data$Time, sep = "_")
+```
+
+```{r}
+Summary <- summarise(group_by(data, key),
+  mean_Area = mean(Area.mm))
+```
+
+```{r}
+Summary <- separate(Summary, col=key, into=c("Isolate", "Genotype", "Time"), sep = "_")
+```
+
+
+```{r}
+#Summary$Genotype <- as.factor(Summary$Genotype)
+#levels(Summary$Genotype)[c(11,12)] <- c("Pad3", "Pad3") 
+  
+```
+
+```{r}
+Summary_wide <- Summary %>% 
+  pivot_wider(names_from = Genotype, values_from = mean_Area) %>% 
+  rename("1-14-23" = "1.14.23", "1-14-1"= "1.14.1", "1-33-1" = "1.33.1", "5-10-2" = "5.10.2")
+
+```
+```{r}
+Summary_wide_diff <- Summary_wide %>% 
+  mutate( "WT-1-14-1" = col0 - 1-14-1,
+          "WT-1-14-23" = col0 - 1-14-23,
+          "WT-1-33-1" = col0 - 1-33-1,
+          "WT-3-1-2-16" = col0 - 3-1-2-16,
+          "WT-3-1-8-14" = col0 - 3-1-8-14,
+          "WT-3-1-8-16" = col0 - 3-1-8-16,
+          "WT-3-11-2-11" = col0 - 1-14-1,
+          "WT-5-10-2" = col0 - 5-10-2,
+          "WT-CYP79B2/B3" = col0 - get("Cyp79B2/B3"),
+          "WT-pad3" = col0 - pad3,
+          )
+ Summary_wide_means <- Summary_wide_diff %>%
+   select(-Isolate, -Time) %>% 
+   colMeans()
+ Summary_wide_means <- as.data.frame(Summary_wide_means)
+```
+
+
+```{r}
+Diff_long <- Summary_wide_diff %>% 
+  pivot_longer(
+    cols = "1-14-1":"WT-pad3",
+    values_to = "Lesion_Area"
+  )
+Diff_long %>%
+  filter(name=="WT-1-14-1") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-1-14-1")
+
+Diff_long %>%
+  filter(name=="WT-1-14-23") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-1-14-23")
+
+Diff_long %>%
+  filter(name=="WT-1-33-1") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-1-33-1")
+
+Diff_long %>%
+  filter(name=="WT-3-1-2-16") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-3-1-2-16")
+
+Diff_long %>%
+  filter(name=="WT-3-1-8-14") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-3-1-8-14")
+
+Diff_long %>%
+  filter(name=="WT-3-1-8-16") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-3-1-8-16")
+
+Diff_long %>%
+  filter(name=="WT-3-11-2-11") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-3-11-2-11")
+
+Diff_long %>%
+  filter(name=="WT-5-10-2") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-5-10-2")
+
+Diff_long %>%
+  filter(name=="WT-Cyp79B2/B3") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-CYP79B2/B3")
+
+Diff_long %>%
+  filter(name=="WT-pad3") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("WT-pad3")
+```
+
+```{r}
+Diff_long %>%
+  filter(name=="1-14-1") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("1-14-1")
+
+Diff_long %>%
+  filter(name=="1-14-23") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("1-14-23")
+
+Diff_long %>%
+  filter(name=="1-33-1") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("1-33-1")
+
+Diff_long %>%
+  filter(name=="3-1-2-16") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("3-1-2-16")
+
+Diff_long %>%
+  filter(name=="3-1-8-14") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("3-1-8-14")
+
+Diff_long %>%
+  filter(name=="3-1-8-16") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("3-1-8-16")
+
+Diff_long %>%
+  filter(name=="3-11-2-11") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("3-11-2-11")
+
+Diff_long %>%
+  filter(name=="5-10-2") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("5-10-2")
+
+Diff_long %>%
+  filter(name=="CYP79B2/B3") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("CYP79B2/B3")
+
+Diff_long %>%
+  filter(name=="pad3") %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  ggtitle("Pad3")
+```
+```{r}
+Diff_long %>% 
+  filter(!str_detect(name, 'WT-')) %>% 
+  filter(!str_detect(name, 'CYP|pad3')) %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=name))+
+  geom_line(aes(group=name))+
+  facet_grid(.~Isolate)
+  
+Diff_long %>% 
+  filter(!str_detect(name, 'WT-')) %>% 
+  filter(!str_detect(name, 'CYP|pad3')) %>% 
+  ggplot(aes(x=Time, y=Lesion_Area, color=Isolate))+
+  geom_line(aes(group=Isolate))+
+  facet_grid(.~name)
+```
+```{r}
+new_merge <- merge_data_nocyp_nopad %>% 
+  group_by(Genotype, Time) %>% 
+  mutate(mean.genotype = mean(Lesion.Size))
+```
+```{r}
+new_merge_pivot <- new_merge %>% 
+  pivot_wider(names_from = Genotype,
+            values_from = mean.genotype)
+
+```
+```{r}
+
+Sum_line <- merge_data_nocyp_nopad %>% 
+  group_by(Genotime) %>% 
+  summarise(genotime = mean(Lesion.Size))
+
+Sum_line <- separate(Sum_line, Genotime, into=c("Genotype", "Time"), sep="_")
+
+sum_line_w <- Sum_line %>% 
+  pivot_wider(
+    names_from = "Genotype",
+    values_from = "genotime"
+  )
+#write.csv(sum_line_w, file="data/Iris_lines_genotypeavgs.csv")
+Mutant_WT_diffs = read.csv(file = "data/Iris_lines_genotypeavgs.csv", header=TRUE)
+Mutant_WT_diff_long <-Mutant_WT_diffs %>%
+  pivot_longer(
+    cols = X1.14.1.WT:X5.10.2.WT,
+    names_to = "Genotype",
+    values_to = "mean.genotype"
+  )
+
+Mutant_WT_diff_long %>% 
+  ggplot(aes(x=Time, y=mean.genotype, color=Genotype))+
+  geom_line()
+```
+
+
+
+```{r}
+
+
+new_merge %>% 
+  ggplot(aes(x=Time, y=mean.genotype, color=Genotype))+
+  geom_line(aes(group=Genotype))
+  
+
+
+    
+
+             
+```
+
+
+
+
+
+
+

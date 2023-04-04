@@ -1,0 +1,112 @@
+---
+title: "F22 Experiment"
+author: "Gurshan"
+date: '2023-01-13'
+output: html_document
+---
+
+```{r}
+library(naniar)
+library(tidyverse)
+library(dbplyr)
+library(ggplot2)
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+getwd()
+data = readr::read_csv(file = "data/IrisLines_DLA_7296h.csv")
+```
+```{r}
+data$Time <- as.factor(data$Time)
+ggplot(data, aes(x=Isolate,y=Lesion.0.s.area, color=Time))+
+geom_boxplot()
+
+```
+```{r}
+Split <- split.data.frame(data, data$Time)
+names(Split) <- c("H72", "H96")
+```
+
+```{r}
+list2env(Split, globalenv())
+```
+```{r}
+H72 %>% 
+  ggplot(
+    aes(x=Lesion.Size))+
+  geom_density()
+H96 %>% 
+  ggplot(
+    aes(x=Lesion.Size))+
+  geom_density()
+```
+```{r}
+data_summary <- data %>% 
+  select(Isolate,Genotype, Tray, Time, Lesion.Size) %>% 
+  filter(Lesion.Size<=500) %>% 
+  arrange(Isolate, Tray)
+```
+
+```{r}
+colnames(data)
+```
+
+
+```{r}
+
+data.frame(data)
+regression = lm(Lesion.Size ~ Isolate * Genotype + Tray + Time, data=data)
+summary(regression)
+anova(regression)
+```
+```{r}
+data$Time <- as.factor(data$Time)
+ggplot(data, aes(x=Lesion.0.m.eccentricity,y=Lesion.0.s.area, color = Genotype))+
+geom_point()+
+  facet_grid(Isolate~Time)+
+  stat_smooth(method = "lm")
+
+```
+```{r}
+
+ggplot(data,aes(x=Lesion.0.m.eccentricity,y=Lesion.0.s.area))+
+#geom_point()
+geom_line(aes(linetype=Isolate))+
+  stat_smooth(method = "lm")+
+  facet_grid(Isolate~Time)
+```
+```{r}
+data$key <- paste(data$Isolate, data$Genotype, data$Time, sep = "_")
+```
+
+```{r}
+Summary <- summarise(group_by(data, key),
+  mean_Area = mean(Lesion.Size))
+```
+
+```{r}
+Summary <- separate(Summary, col=key, into=c("Isolate", "Genotype", "Time"), sep = "_")
+
+Summary$Genotype <- as.factor(Summary$Genotype)
+levels(Summary$Genotype)[c(11,12)] <- c("Pad3", "Pad3") 
+  
+```
+```{r}
+Summary_wide <- Summary %>% 
+  pivot_wider(names_from = Genotype, values_from = mean_Area)
+Summary_wide %>% 
+  data.frame()
+  data$C <- (data$col0 - data$Pad3)
+
+```
+
+
+
+
+
+
