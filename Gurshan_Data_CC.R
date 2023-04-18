@@ -326,4 +326,6 @@ Mutant_WT_diff_long %>%
   ggplot(aes(x=Time, y=mean.genotype, color=Genotype))+
   geom_line()
 
-
+regression0 = lm(Leaf.Size ~ Genotype*Isolate + Tray + Time , data=merge_data_nocyp_nopad)
+regression_Gene = lm(Area.mm ~ Tray + Time + Isolate*AT1G22410_myb + Isolate*AT1G22410_evening + Isolate*AT4G33510, data=merge_data_nocyp_nopad)
+regression_Iso = lm(Area.mm ~ Tray + Time + Genotype*Botrydial_HL, data=merge_data_nocyp_nopad)
